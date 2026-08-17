@@ -1,14 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { backendPublicUrl, port } = require('../config/env');
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
 const getPublicBaseUrl = () =>
-  String(process.env.BACKEND_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`).replace(
-    /\/$/,
-    ''
-  );
+  String(backendPublicUrl || `http://localhost:${port || 5000}`).replace(/\/$/, '');
 
 const ensureUploadsDir = () => {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });

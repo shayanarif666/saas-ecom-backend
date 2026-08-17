@@ -14,7 +14,7 @@ const register = asyncHandler(async (req, res) => {
     refreshToken: result.refreshToken,
   });
 
-  const data = { user: result.user };
+  const data = { user: result.user, accessToken: result.accessToken, refreshToken: result.refreshToken };
   if (result.store) data.store = result.store;
 
   return successResponse(res, {
@@ -51,7 +51,12 @@ const registerVerify = asyncHandler(async (req, res) => {
   return successResponse(res, {
     statusCode: 201,
     message: 'Email verified. Store created successfully',
-    data: { user: result.user, store: result.store },
+    data: {
+      user: result.user,
+      store: result.store,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
   });
 });
 
@@ -74,12 +79,17 @@ const login = asyncHandler(async (req, res) => {
 
   return successResponse(res, {
     message: 'Logged in successfully',
-    data: { user: result.user },
+    data: {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
   });
 });
 
 const refresh = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies?.[REFRESH_COOKIE];
+  const refreshToken =
+    req.cookies?.[REFRESH_COOKIE] || req.body?.refreshToken || null;
   const result = await authService.refresh(refreshToken);
   setAuthCookies(res, {
     accessToken: result.accessToken,
@@ -91,6 +101,7 @@ const refresh = asyncHandler(async (req, res) => {
     data: {
       user: result.user,
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     },
   });
 });

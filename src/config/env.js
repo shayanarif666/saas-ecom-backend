@@ -24,6 +24,9 @@ module.exports = {
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   dashboardUrl: process.env.DASHBOARD_URL || 'http://localhost:5174',
+  backendPublicUrl: String(
+    process.env.BACKEND_PUBLIC_URL || 'https://saas-ecom-backend-g9zg.onrender.com'
+  ).replace(/\/+$/, ''),
   platformRootDomain: process.env.PLATFORM_ROOT_DOMAIN || 'localhost',
   /** Localhost storefront resolves to this customDomain (e.g. acadex.com) */
   defaultStoreDomain: process.env.DEFAULT_STORE_DOMAIN || 'acadex.com',

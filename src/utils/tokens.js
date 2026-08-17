@@ -1,15 +1,20 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { jwt: jwtConfig, nodeEnv } = require('../config/env');
+const { jwt: jwtConfig, nodeEnv, backendPublicUrl } = require('../config/env');
 
 const ACCESS_COOKIE = 'accessToken';
 const REFRESH_COOKIE = 'refreshToken';
 
+/** Cross-site SPAs (localhost → Render) need SameSite=None; Secure. */
+const useCrossSiteCookies =
+  nodeEnv === 'production' ||
+  String(backendPublicUrl || '').startsWith('https');
+
 const cookieOptions = (maxAgeMs) => ({
   httpOnly: true,
-  secure: nodeEnv === 'production',
-  sameSite: nodeEnv === 'production' ? 'none' : 'lax',
+  secure: useCrossSiteCookies,
+  sameSite: useCrossSiteCookies ? 'none' : 'lax',
   maxAge: maxAgeMs,
   path: '/',
 });
@@ -64,8 +69,8 @@ const setAuthCookies = (res, { accessToken, refreshToken }) => {
 const clearAuthCookies = (res) => {
   const base = {
     httpOnly: true,
-    secure: nodeEnv === 'production',
-    sameSite: nodeEnv === 'production' ? 'none' : 'lax',
+    secure: useCrossSiteCookies,
+    sameSite: useCrossSiteCookies ? 'none' : 'lax',
     path: '/',
   };
   res.clearCookie(ACCESS_COOKIE, base);
