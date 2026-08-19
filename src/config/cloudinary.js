@@ -1,12 +1,10 @@
-const { v2: cloudinary } = require('cloudinary');
-const { cloudinary: cfg } = require('./env');
+require('dotenv').config();
+const cloudinary = require('cloudinary').v2;
 
-if (cfg.cloudName && cfg.apiKey && cfg.apiSecret) {
-  cloudinary.config({
-    cloud_name: cfg.cloudName,
-    api_key: cfg.apiKey,
-    api_secret: cfg.apiSecret,
-  });
-}
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 module.exports = cloudinary;

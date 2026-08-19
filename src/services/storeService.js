@@ -5,6 +5,7 @@ require('../models/Category');
 const Category = require('../models/Category');
 const AppError = require('../utils/AppError');
 const { normalizeDomain } = require('../utils/domain');
+const { persistImageValue, persistImageList } = require('./uploadService');
 
 const SENSITIVE_PATHS = [
   '-paymentCredentials.jazzcash.password',
@@ -79,6 +80,7 @@ const updateMyStore = async (storeId, payload) => {
   if (payload.banners !== undefined || payload.bannerUrls !== undefined) {
     const incoming = payload.banners !== undefined ? payload.banners : payload.bannerUrls;
     const banners = normalizeBanners(incoming);
+    const brandingFolder = `bookstore/store-${storeId}/branding`;
 
     for (const banner of banners) {
       if (!banner.categoryId) continue;
@@ -89,11 +91,16 @@ const updateMyStore = async (storeId, payload) => {
       }
     }
 
-    store.banners = banners.map((b) => ({
-      imageUrl: b.imageUrl,
+    const persistedUrls = await persistImageList(
+      banners.map((b) => b.imageUrl),
+      { folder: brandingFolder }
+    );
+
+    store.banners = banners.map((b, index) => ({
+      imageUrl: persistedUrls[index],
       categoryId: b.categoryId || null,
     }));
-    store.bannerUrls = banners.map((b) => b.imageUrl);
+    store.bannerUrls = persistedUrls;
   }
 
   const allowed = [
@@ -116,6 +123,17 @@ const updateMyStore = async (storeId, payload) => {
     'onboardingCompleted',
     'isLive',
     'socialLinks',
+  ];
+
+  const brandingFolder = `bookstore/store-${storeId}/branding`;
+  const imageFields = [
+    'logoUrl',
+    'faviconUrl',
+    'globalBannerUrl',
+    'aboutBannerUrl',
+    'contactBannerUrl',
+    'faqBannerUrl',
+    'trackOrderBannerUrl',
   ];
 
   for (const key of allowed) {
@@ -145,16 +163,28 @@ const updateMyStore = async (storeId, payload) => {
             );
           }
         }
-        next.collections = collections.map((c) => ({
+        const collectionUrls = await persistImageList(
+          collections.map((c) => c.imageUrl),
+          { folder: brandingFolder }
+        );
+        next.collections = collections.map((c, index) => ({
           title: c.title,
           description: c.description || '',
-          imageUrl: c.imageUrl,
+          imageUrl: collectionUrls[index],
           categoryId: c.categoryId || null,
         }));
       }
       store.websiteContent = next;
     } else if (key === 'socialLinks') {
       store.socialLinks = payload.socialLinks;
+    } else if (imageFields.includes(key)) {
+      store[key] =
+        payload[key] === ''
+          ? undefined
+          : await persistImageValue(payload[key], {
+              folder: brandingFolder,
+              filename: key,
+            });
     } else {
       store[key] = payload[key] === '' ? undefined : payload[key];
     }

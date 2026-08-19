@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const AppError = require('../utils/AppError');
 const { toSlug, ensureUniqueSlug } = require('../utils/slug');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { persistImageList } = require('./uploadService');
 
 const SORT_MAP = {
   newest: { createdAt: -1 },
@@ -157,9 +158,13 @@ const createProduct = async (storeId, payload) => {
 
   const baseSlug = toSlug(payload.slug || payload.title);
   const slug = await ensureUniqueSlug(Product, { storeId, baseSlug });
+  const images = await persistImageList(payload.images || [], {
+    folder: `bookstore/store-${storeId}/products`,
+  });
 
   const product = await Product.create({
     ...payload,
+    images,
     storeId,
     slug,
     sku: payload.sku.toUpperCase(),
@@ -220,6 +225,10 @@ const updateProduct = async (storeId, id, payload) => {
     if (payload[key] !== undefined) {
       if (key === 'keyHighlights') {
         product.keyHighlights = assertHighlights(payload.keyHighlights);
+      } else if (key === 'images') {
+        product.images = await persistImageList(payload.images, {
+          folder: `bookstore/store-${storeId}/products`,
+        });
       } else {
         product[key] = payload[key] === '' ? undefined : payload[key];
       }

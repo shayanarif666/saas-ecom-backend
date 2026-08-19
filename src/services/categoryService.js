@@ -3,6 +3,7 @@ const Product = require('../models/Product');
 const AppError = require('../utils/AppError');
 const { toSlug, ensureUniqueSlug } = require('../utils/slug');
 const { parsePagination, buildMeta } = require('../utils/pagination');
+const { persistImageValue } = require('./uploadService');
 
 const listCategories = async (storeId, query) => {
   const { page, limit, skip } = parsePagination(query);
@@ -44,9 +45,16 @@ const createCategory = async (storeId, payload) => {
 
   const baseSlug = toSlug(payload.slug || payload.name);
   const slug = await ensureUniqueSlug(Category, { storeId, baseSlug });
+  const imageUrl = payload.imageUrl
+    ? await persistImageValue(payload.imageUrl, {
+        folder: `bookstore/store-${storeId}/categories`,
+        filename: 'category',
+      })
+    : payload.imageUrl;
 
   return Category.create({
     ...payload,
+    imageUrl,
     storeId,
     slug,
     parentCategoryId: payload.parentCategoryId || null,
@@ -84,6 +92,11 @@ const updateCategory = async (storeId, id, payload) => {
       category.parentCategoryId = payload.parentCategoryId || null;
     } else if (payload[key] === '') {
       category[key] = undefined;
+    } else if (key === 'imageUrl') {
+      category.imageUrl = await persistImageValue(payload.imageUrl, {
+        folder: `bookstore/store-${storeId}/categories`,
+        filename: 'category',
+      });
     } else {
       category[key] = payload[key];
     }

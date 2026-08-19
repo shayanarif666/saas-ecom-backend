@@ -11,7 +11,6 @@ const makeQueryWritable = require('./middlewares/makeQueryWritable');
 const sanitizeRequest = require('./middlewares/sanitizeRequest');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
-const { ensureUploadsDir } = require('./utils/localUploads');
 
 const app = express();
 
@@ -36,7 +35,7 @@ if (nodeEnv === 'development') {
   app.use(morgan('dev'));
 }
 
-ensureUploadsDir();
+// Legacy local files only — new uploads go to Cloudinary.
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/health', (_req, res) => {

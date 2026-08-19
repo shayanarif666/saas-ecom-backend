@@ -19,8 +19,22 @@ const getSenderMeta = (overrideName) => ({
     'Bookstore',
 });
 
-const hasSmtpConfig = () =>
-  Boolean(smtp?.host && (smtp?.user || process.env.SMTP_USER) && (smtp?.pass || process.env.SMTP_PASS));
+const hasSmtpConfig = () => {
+  const host = String(smtp?.host || '').trim();
+  const user = String(smtp?.user || process.env.SMTP_USER || '').trim();
+  const pass = String(smtp?.pass || process.env.SMTP_PASS || '').trim();
+  if (!host || !user || !pass) return false;
+  const blob = `${host} ${user} ${pass}`;
+  if (/fake|example\.com|change_me|your_|placeholder/i.test(blob)) return false;
+  return true;
+};
+
+const hasBrevoConfig = () => {
+  const key = String(process.env.BREVO_API_KEY || brevo?.apiKey || '').trim();
+  if (!key) return false;
+  if (/fake|change_me|your_|xxx/i.test(key)) return false;
+  return true;
+};
 
 const getBrevoClient = () => {
   const apiKey = process.env.BREVO_API_KEY?.trim();
@@ -38,6 +52,7 @@ const escapeHtml = (value) =>
     .replace(/"/g, '&quot;');
 
 const storeEmailTemplate = ({ storeName, content }) => {
+  console.log('INSIDE STORE EMAIL TEMPLATE ====== >', storeName, content);
   const brand = escapeHtml(storeName || 'Store');
   return `
 <!DOCTYPE html><html>
@@ -74,24 +89,39 @@ const emailTemplate = (content) => storeEmailTemplate({ storeName: 'BookVerse', 
 const cloudEmailHint =
   'Disable Brevo IP whitelist: Brevo → Settings → Security → Authorized IPs → turn OFF blocking for API keys.';
 
+const withTimeout = (promise, ms, label) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+
 const sendViaNodemailer = async ({ to, subject, html, senderEmail, senderName, replyTo }) => {
   const transporter = nodemailer.createTransport({
     host: smtp.host,
     port: smtp.port || 587,
     secure: Boolean(smtp.secure),
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
     auth: {
       user: smtp.user || process.env.SMTP_USER,
       pass: smtp.pass || process.env.SMTP_PASS,
     },
   });
 
-  await transporter.sendMail({
-    from: `"${senderName}" <${senderEmail}>`,
-    to: Array.isArray(to) ? to.join(', ') : to,
-    replyTo: replyTo || undefined,
-    subject,
-    html,
-  });
+  await withTimeout(
+    transporter.sendMail({
+      from: `"${senderName}" <${senderEmail}>`,
+      to: Array.isArray(to) ? to.join(', ') : to,
+      replyTo: replyTo || undefined,
+      subject,
+      html,
+    }),
+    10000,
+    'SMTP send'
+  );
 };
 
 const sendViaBrevo = async ({ to, subject, html, senderEmail, senderName, replyTo }) => {
@@ -105,7 +135,11 @@ const sendViaBrevo = async ({ to, subject, html, senderEmail, senderName, replyT
   if (replyTo) {
     payload.replyTo = { email: replyTo, name: senderName };
   }
-  await client.transactionalEmails.sendTransacEmail(payload);
+  await withTimeout(
+    client.transactionalEmails.sendTransacEmail(payload),
+    12000,
+    'Brevo send'
+  );
 };
 
 /**
@@ -113,12 +147,14 @@ const sendViaBrevo = async ({ to, subject, html, senderEmail, senderName, replyT
  * Options: { to, subject, html, text, fromName, replyTo }
  * Also supports: sendEmail(to, subject, html)
  */
-const sendEmail = async (toOrOptions, subjectMaybe, htmlMaybe) => {
+const sendEmail = async (toOrOptions, subjectMaybe, htmlMaybe, from = 'BookVerse') => {
   let to;
   let subject;
   let html;
   let fromName;
   let replyTo;
+
+  console.log('INSIDE SEND EMAIL ====== >', toOrOptions, subjectMaybe, htmlMaybe, from);
 
   if (toOrOptions && typeof toOrOptions === 'object' && !Array.isArray(toOrOptions)) {
     to = toOrOptions.to;
@@ -141,16 +177,6 @@ const sendEmail = async (toOrOptions, subjectMaybe, htmlMaybe) => {
     throw new Error('EMAIL_FROM / SENDER_EMAIL / SMTP_USER must be configured.');
   }
 
-  const canSkip =
-    nodeEnv === 'development' &&
-    !process.env.BREVO_API_KEY?.trim() &&
-    !hasSmtpConfig();
-
-  if (canSkip) {
-    console.log('[email:dev-fallback]', { to, subject, fromName: senderName });
-    return { skipped: true };
-  }
-
   try {
     if (hasSmtpConfig()) {
       await sendViaNodemailer({
@@ -161,7 +187,7 @@ const sendEmail = async (toOrOptions, subjectMaybe, htmlMaybe) => {
         senderName,
         replyTo,
       });
-    } else {
+    } else if (hasBrevoConfig()) {
       await sendViaBrevo({
         to,
         subject,
@@ -170,6 +196,11 @@ const sendEmail = async (toOrOptions, subjectMaybe, htmlMaybe) => {
         senderName,
         replyTo,
       });
+    } else if (nodeEnv === 'development') {
+      console.log('[email:dev-fallback]', { to, subject, fromName: senderName });
+      return { skipped: true };
+    } else {
+      throw new Error('No email provider configured (SMTP or Brevo).');
     }
   } catch (err) {
     const isCloud = Boolean(
@@ -189,6 +220,7 @@ const sendEmail = async (toOrOptions, subjectMaybe, htmlMaybe) => {
 
 /** OTP verification email for Dashboard registration */
 const sendOTPEmail = async (to, storeName, otp, expiryMinutes = 10) => {
+  console.log('sendOTPEmail', to, storeName, otp, expiryMinutes);
   const subject = 'Verify Your Email – BookVerse OTP';
   const html = emailTemplate(`
       <p>Hi <strong>${escapeHtml(storeName)}</strong>,</p>
@@ -205,12 +237,22 @@ const sendOTPEmail = async (to, storeName, otp, expiryMinutes = 10) => {
     console.log(`[otp:dev] ${to} → ${otp} (expires ${expiryMinutes}m)`);
   }
 
-  return sendEmail({
-    to,
-    subject,
-    html,
-    fromName: 'BookVerse',
-  });
+  try {
+    return await sendEmail({
+      to,
+      subject,
+      html,
+      fromName: 'BookVerse',
+    });
+  } catch (err) {
+    if (nodeEnv === 'development') {
+      console.warn(
+        `[otp:dev] email not delivered (${err.message}). Use the console OTP above.`
+      );
+      return { skipped: true, reason: err.message };
+    }
+    throw err;
+  }
 };
 
 module.exports = {

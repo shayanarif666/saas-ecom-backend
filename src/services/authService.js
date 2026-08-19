@@ -19,7 +19,7 @@ const {
 const { toSlug, ensureUniqueStoreSlug } = require('../utils/slug');
 const { sendEmail, sendOTPEmail } = require('../utils/email');
 const { normalizeDomain } = require('../utils/domain');
-const { dashboardUrl, frontendUrl } = require('../config/env');
+const { dashboardUrl, frontendUrl, nodeEnv } = require('../config/env');
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const OTP_MAX_ATTEMPTS = 5;
@@ -267,6 +267,7 @@ const startRegistration = async (body) => {
     customDomain,
     expiresInMinutes: 10,
     message: 'OTP sent to your email',
+    ...(nodeEnv === 'development' ? { devOtp: otp } : {}),
   };
 };
 
@@ -300,6 +301,7 @@ const resendRegistrationOtp = async ({ email: rawEmail }) => {
     email,
     expiresInMinutes: 10,
     message: 'OTP resent to your email',
+    ...(nodeEnv === 'development' ? { devOtp: otp } : {}),
   };
 };
 

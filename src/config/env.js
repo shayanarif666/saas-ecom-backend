@@ -31,9 +31,15 @@ module.exports = {
   /** Localhost storefront resolves to this customDomain (e.g. acadex.com) */
   defaultStoreDomain: process.env.DEFAULT_STORE_DOMAIN || 'acadex.com',
   cloudinary: {
-    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
-    apiKey: process.env.CLOUDINARY_API_KEY,
-    apiSecret: process.env.CLOUDINARY_API_SECRET,
+    cloudName: String(process.env.CLOUDINARY_CLOUD_NAME || '').trim(),
+    apiKey: String(
+      process.env.CLOUDINARY_CLOUD_API_KEY || process.env.CLOUDINARY_API_KEY || ''
+    ).trim(),
+    apiSecret: String(
+      process.env.CLOUDINARY_CLOUD_API_SECRET ||
+        process.env.CLOUDINARY_API_SECRET ||
+        ''
+    ).trim(),
   },
   brevo: {
     apiKey: process.env.BREVO_API_KEY,
