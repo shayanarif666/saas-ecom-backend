@@ -20,7 +20,7 @@ app.use(makeQueryWritable);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(
   cors({
-    origin: [frontendUrl, dashboardUrl],
+    origin: true,
     credentials: true,
   })
 );
