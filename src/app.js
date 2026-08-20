@@ -44,6 +44,11 @@ app.get('/health', (_req, res) => {
 
 app.use('/api/v1', routes);
 
+app.get('/api/ping', (_req, res) => {
+  console.log(`[PingController] Ping received at ${new Date().toISOString()}`);
+  res.send("ping");
+});
+
 app.use(notFound);
 app.use(errorHandler);
 
