@@ -54,6 +54,32 @@ const productSchema = new mongoose.Schema(
     publisher: { type: String, trim: true },
     language: { type: String, trim: true },
     isbn: { type: String, trim: true },
+    /** When true, storefront shows color swatches from `colors` */
+    hasColors: { type: Boolean, default: false },
+    colors: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (arr) =>
+          Array.isArray(arr) &&
+          arr.length <= 24 &&
+          arr.every((c) => typeof c === 'string' && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(c.trim())),
+        message: 'colors must be hex values like #fff or #ffffff (max 24)',
+      },
+    },
+    /** When true, storefront shows size options from `sizes` */
+    hasSizes: { type: Boolean, default: false },
+    sizes: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: (arr) =>
+          Array.isArray(arr) &&
+          arr.length <= 12 &&
+          arr.every((s) => typeof s === 'string' && s.trim().length > 0 && s.trim().length <= 40),
+        message: 'sizes must be non-empty strings (max 12)',
+      },
+    },
   },
   { timestamps: true }
 );

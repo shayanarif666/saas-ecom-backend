@@ -25,17 +25,17 @@ const SORT_MAP = {
 const restockOrderItems = async (order, storeId) => {
   for (const item of order.items) {
     if (!item.productId) continue;
+    const qty = Number(item.quantity) || 0;
+    if (qty < 1) continue;
+
     // eslint-disable-next-line no-await-in-loop
-    await Product.updateOne({ _id: item.productId, storeId }, [
-      {
-        $set: {
-          stockQuantity: { $add: ['$stockQuantity', item.quantity] },
-          soldCount: {
-            $max: [{ $subtract: ['$soldCount', item.quantity] }, 0],
-          },
-        },
-      },
-    ]);
+    const product = await Product.findOne({ _id: item.productId, storeId });
+    if (!product) continue;
+
+    product.stockQuantity = Math.max(0, Number(product.stockQuantity) || 0) + qty;
+    product.soldCount = Math.max(0, (Number(product.soldCount) || 0) - qty);
+    // eslint-disable-next-line no-await-in-loop
+    await product.save();
   }
 };
 

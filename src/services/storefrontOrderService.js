@@ -81,6 +81,17 @@ const placeOrder = async (storeId, userId, payload) => {
       unitPrice,
       quantity: qty,
       subtotal: lineSubtotal,
+      colors: Array.isArray(line.colors)
+        ? line.colors
+        : line.color
+          ? [line.color]
+          : [],
+      sizes: Array.isArray(line.sizes)
+        ? line.sizes
+        : line.size
+          ? [line.size]
+          : [],
+      extraInfo: String(line.extraInfo || '').trim().slice(0, 500),
     });
   }
 

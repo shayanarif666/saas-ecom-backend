@@ -41,6 +41,36 @@ const assertHighlights = (highlights) => {
   return list;
 };
 
+const normalizeHexColor = (value) => {
+  const raw = String(value || '').trim();
+  if (!/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(raw)) return null;
+  if (raw.length === 4) {
+    return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toLowerCase();
+  }
+  return raw.toLowerCase();
+};
+
+const normalizeVariantOptions = (payload = {}) => {
+  const hasColors = Boolean(payload.hasColors);
+  const hasSizes = Boolean(payload.hasSizes);
+
+  const colors = hasColors
+    ? [...new Set((payload.colors || []).map(normalizeHexColor).filter(Boolean))]
+    : [];
+  const sizes = hasSizes
+    ? [...new Set((payload.sizes || []).map((s) => String(s || '').trim()).filter(Boolean))]
+    : [];
+
+  if (hasColors && !colors.length) {
+    throw new AppError('Select at least one color when the color option is enabled', 400);
+  }
+  if (hasSizes && !sizes.length) {
+    throw new AppError('Select at least one size when the size option is enabled', 400);
+  }
+
+  return { hasColors, colors, hasSizes, sizes };
+};
+
 const listProducts = async (storeId, query) => {
   const { page, limit, skip } = parsePagination(query);
   const filter = { storeId };
@@ -149,6 +179,7 @@ const createProduct = async (storeId, payload) => {
 
   assertPricing(payload.price, payload.discountPrice);
   const keyHighlights = assertHighlights(payload.keyHighlights);
+  const variants = normalizeVariantOptions(payload);
 
   const skuExists = await Product.exists({
     storeId,
@@ -170,6 +201,10 @@ const createProduct = async (storeId, payload) => {
     sku: payload.sku.toUpperCase(),
     stockQuantity: Math.max(0, payload.stockQuantity ?? 0),
     keyHighlights,
+    hasColors: variants.hasColors,
+    colors: variants.colors,
+    hasSizes: variants.hasSizes,
+    sizes: variants.sizes,
   });
 
   return product.populate('categoryId', 'name slug');
@@ -219,6 +254,10 @@ const updateProduct = async (storeId, id, payload) => {
     'publisher',
     'language',
     'isbn',
+    'hasColors',
+    'colors',
+    'hasSizes',
+    'sizes',
   ];
 
   for (const key of fields) {
@@ -233,6 +272,28 @@ const updateProduct = async (storeId, id, payload) => {
         product[key] = payload[key] === '' ? undefined : payload[key];
       }
     }
+  }
+
+  if (
+    payload.hasColors !== undefined ||
+    payload.colors !== undefined ||
+    payload.hasSizes !== undefined ||
+    payload.sizes !== undefined
+  ) {
+    const variants = normalizeVariantOptions({
+      hasColors: payload.hasColors !== undefined ? payload.hasColors : product.hasColors,
+      colors: payload.colors !== undefined ? payload.colors : product.colors,
+      hasSizes: payload.hasSizes !== undefined ? payload.hasSizes : product.hasSizes,
+      sizes: payload.sizes !== undefined ? payload.sizes : product.sizes,
+    });
+    product.set({
+      hasColors: variants.hasColors,
+      colors: variants.colors,
+      hasSizes: variants.hasSizes,
+      sizes: variants.sizes,
+    });
+    product.markModified('colors');
+    product.markModified('sizes');
   }
 
   if (payload.stockQuantity !== undefined) {

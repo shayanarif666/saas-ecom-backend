@@ -79,6 +79,13 @@ const createProduct = Joi.object({
   publisher: Joi.string().trim().max(120).allow('', null),
   language: Joi.string().trim().max(60).allow('', null),
   isbn: Joi.string().trim().max(40).allow('', null),
+  hasColors: Joi.boolean().default(false),
+  colors: Joi.array()
+    .items(Joi.string().trim().pattern(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/))
+    .max(24)
+    .default([]),
+  hasSizes: Joi.boolean().default(false),
+  sizes: Joi.array().items(Joi.string().trim().min(1).max(40)).max(12).default([]),
 });
 
 const updateProduct = createProduct

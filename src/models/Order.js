@@ -26,6 +26,9 @@ const orderItemSchema = new mongoose.Schema(
     unitPrice: { type: Number, required: true, min: 0 },
     quantity: { type: Number, required: true, min: 1 },
     subtotal: { type: Number, required: true, min: 0 },
+    colors: { type: [String], default: [] },
+    sizes: { type: [String], default: [] },
+    extraInfo: { type: String, trim: true, maxlength: 500, default: '' },
   },
   { _id: false }
 );

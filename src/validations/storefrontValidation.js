@@ -19,6 +19,15 @@ const putCartSchema = Joi.object({
       Joi.object({
         productId: objectId.required(),
         quantity: Joi.number().integer().min(1).max(999).required(),
+        colors: Joi.array()
+          .items(Joi.string().trim().pattern(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/))
+          .max(24)
+          .default([]),
+        sizes: Joi.array().items(Joi.string().trim().min(1).max(40)).max(12).default([]),
+        extraInfo: Joi.string().trim().max(500).allow('', null),
+        // legacy single fields
+        color: Joi.string().trim().allow('', null),
+        size: Joi.string().trim().allow('', null),
       })
     )
     .required(),
@@ -51,6 +60,14 @@ const placeOrderSchema = Joi.object({
       Joi.object({
         productId: objectId.required(),
         quantity: Joi.number().integer().min(1).max(999).required(),
+        colors: Joi.array()
+          .items(Joi.string().trim().pattern(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/))
+          .max(24)
+          .default([]),
+        sizes: Joi.array().items(Joi.string().trim().min(1).max(40)).max(12).default([]),
+        extraInfo: Joi.string().trim().max(500).allow('', null),
+        color: Joi.string().trim().allow('', null),
+        size: Joi.string().trim().allow('', null),
       })
     )
     .min(1)

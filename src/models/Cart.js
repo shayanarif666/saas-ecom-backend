@@ -9,6 +9,12 @@ const cartItemSchema = new mongoose.Schema(
     },
     quantity: { type: Number, required: true, min: 1 },
     priceAtAdd: { type: Number, required: true, min: 0 },
+    /** Selected color hex values for this line (max = quantity) */
+    colors: { type: [String], default: [] },
+    /** Selected size labels for this line (max = quantity) */
+    sizes: { type: [String], default: [] },
+    /** Customer note / extra information for this line */
+    extraInfo: { type: String, trim: true, maxlength: 500, default: '' },
   },
   { _id: true }
 );
